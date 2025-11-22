@@ -1,0 +1,71 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Env / secrets
+.env
+.env.*
+*.local
+
+########################
+# Rust / Cargo (server)
+########################
+
+# Build output
+/target/
+**/target/
+
+# Rust backup files
+**/*.rs.bk
+
+# Don't ignore Cargo.lock – commit it for apps
+#!Cargo.lock
+
+# Local tool state
+/codeedit/
+codeedit/
+
+# Local run output
+/output.txt
+
+########################
+# Node / React / Vite (web)
+########################
+
+# Dependencies
+/node_modules/
+**/node_modules/
+
+# Vite / build output
+/dist/
+web/dist/
+web/.vite/
+
+# Vite/TS incremental builds
+**/*.tsbuildinfo
+web/node_modules/.tmp/
+
+# Tooling caches
+.npm/
+.pnpm-store/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+########################
+# Testing / coverage
+########################
+
+coverage/
+.nyc_output/
