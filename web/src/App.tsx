@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import Editor, { type OnMount } from '@monaco-editor/react'; // <--- FIX: added 'type'
-import type * as monaco from 'monaco-editor'; // <--- Fix: Import monaco types for safety
+import Editor, { type OnMount } from '@monaco-editor/react';
+import type * as monaco from 'monaco-editor';
 import axios from 'axios';
 import { 
   Search, Save, CheckCircle, Circle, FileCode, 
-  AlertTriangle, ChevronDown, ChevronUp, X 
+  AlertTriangle, ChevronDown, ChevronUp, X, ArrowRight 
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -156,8 +156,8 @@ function App() {
     }
   };
 
-  const handleSave = async () => {
-    if (!activeFile) return;
+  const handleSave = async (): Promise<boolean> => {
+    if (!activeFile) return false;
     try {
       const res = await axios.post(`${API}/file`, {
         path: activeFile.path,
@@ -167,7 +167,7 @@ function App() {
 
       if (res.data.status === 'conflict') {
         alert("CONFLICT: File changed on disk. Reload required.");
-        return;
+        return false;
       }
 
       setActiveFile({ ...activeFile, content: editorContent, etag: res.data.new_etag });
@@ -175,11 +175,39 @@ function App() {
       setStatusMsg({ type: 'success', text: 'Saved successfully' });
       
       if (query) runSearch();
+      return true;
 
     } catch (e) {
       setStatusMsg({ type: 'error', text: 'Save failed' });
+      return false;
     }
   };
+
+  const handleSaveAndNext = async () => {
+    // 1. Determine next file immediately
+    const currentIndex = fileList.findIndex(f => f.path === activeFile?.path);
+    let nextFile = null;
+    if (currentIndex !== -1 && currentIndex < fileList.length - 1) {
+        nextFile = fileList[currentIndex + 1];
+    }
+
+    // 2. Save if dirty
+    if (unsavedChanges) {
+      const success = await handleSave();
+      if (!success) return; // Stop if save failed
+    }
+
+    // 3. Navigate
+    if (nextFile) {
+        openFile(nextFile.path, nextFile.firstLine);
+    } else {
+        setStatusMsg({ type: 'info', text: 'End of list' });
+    }
+  };
+
+  // Keep ref updated for Monaco shortcuts
+  const handleSaveAndNextRef = useRef(handleSaveAndNext);
+  useEffect(() => { handleSaveAndNextRef.current = handleSaveAndNext; }, [handleSaveAndNext]);
 
   const handleSetStatus = async (path: string, status: Status) => {
     setChecklist(prev => ({
@@ -200,6 +228,11 @@ function App() {
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
+    });
+
+    // Alt+N for Save & Next
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyN, () => {
+        handleSaveAndNextRef.current();
     });
     
     // Alt+D to mark done
@@ -372,12 +405,20 @@ function App() {
                   <div className="w-px h-3 bg-gray-700 mx-2"></div>
 
                   <button 
-                    onClick={handleSave}
+                    onClick={handleSaveAndNext}
+                    className="flex items-center gap-1 text-xs bg-blue-800 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+                    title="Save and go to next file (Alt+N)"
+                  >
+                    <Save size={12} /> <ArrowRight size={12} /> Save & Next
+                  </button>
+
+                  <button 
+                    onClick={() => handleSave()}
                     disabled={!unsavedChanges}
-                    className="flex items-center gap-1 text-xs bg-blue-700 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-blue-700 transition-colors"
+                    className="flex items-center gap-1 text-xs bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-600 disabled:opacity-50 disabled:hover:bg-gray-700 transition-colors"
                     title="Ctrl+S"
                   >
-                    <Save size={12} /> Save
+                    <Save size={12} />
                   </button>
                 </div>
               </div>
